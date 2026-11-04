@@ -10396,10 +10396,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               : { allowedTools: queryPolicy.allowedTools }),
           });
           // Adding or removing a project changes the directories Claude was launched with.
-          const queryPolicyKey = JSON.stringify([
+          const queryPolicyKey = [
             claudeEffectiveQueryPolicyKey(queryPolicy, mcpOverrides),
-            turnInput.runtimePolicy.additionalDirectories ?? [],
-          ]);
+            ...(turnInput.runtimePolicy.additionalDirectories ?? []),
+          ].join("\u0000");
           const compiledSelection = compileClaudeModelSelection(turnInput.modelSelection);
           const resumeSessionAt = yield* getNativeConversationHeadId(turnInput.providerThread);
           const existing = yield* Ref.get(queryContext);

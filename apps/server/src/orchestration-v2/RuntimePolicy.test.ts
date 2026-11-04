@@ -21,6 +21,8 @@ import * as ProjectStore from "./ProjectStore.ts";
 import * as RuntimePolicy from "./RuntimePolicy.ts";
 
 const projectId = ProjectId.make("project:runtime-policy");
+const otherProjectId = ProjectId.make("project:other");
+const missingProjectId = ProjectId.make("project:removed");
 const providerInstanceId = ProviderInstanceId.make("codex");
 const modelSelection = {
   instanceId: providerInstanceId,
@@ -31,6 +33,7 @@ function makeThread(input: {
   readonly now: DateTime.Utc;
   readonly worktreePath: string | null;
   readonly runtimeMode?: RuntimeMode;
+  readonly additionalProjectIds?: ReadonlyArray<ProjectId>;
 }): OrchestrationV2AppThread {
   const threadId = ThreadId.make("thread:runtime-policy");
   return {
@@ -45,6 +48,9 @@ function makeThread(input: {
     interactionMode: "default",
     branch: null,
     worktreePath: input.worktreePath,
+    ...(input.additionalProjectIds === undefined
+      ? {}
+      : { additionalProjectIds: input.additionalProjectIds }),
     activeProviderThreadId: null,
     lineage: {
       parentThreadId: null,
@@ -89,23 +95,25 @@ const layerWithPolicy = (policy?: ManagedPolicySummary) =>
     ),
     Layer.provide(
       Layer.mock(ProjectStore.ProjectStoreV2)({
-        get: () =>
-          Effect.succeedSome({
-            projectId,
-            title: "Project",
-            workspaceRoot: "/project-root",
-            defaultModelSelection: null,
-            defaultThreadEnvMode: null,
-            autoPull: false,
-            faviconPath: null,
-            projectIcon: null,
-            scripts: [],
-            pinnedAt: null,
-            archivedAt: null,
-            createdAt: "2026-06-21T00:00:00.000Z",
-            updatedAt: "2026-06-21T00:00:00.000Z",
-            deletedAt: null,
-          }),
+        get: (id) =>
+          id === missingProjectId
+            ? Effect.succeedNone
+            : Effect.succeedSome({
+                projectId: id,
+                title: "Project",
+                workspaceRoot: id === projectId ? "/project-root" : `/roots/${id}`,
+                defaultModelSelection: null,
+                defaultThreadEnvMode: null,
+                autoPull: false,
+                faviconPath: null,
+                projectIcon: null,
+                scripts: [],
+                pinnedAt: null,
+                archivedAt: null,
+                createdAt: "2026-06-21T00:00:00.000Z",
+                updatedAt: "2026-06-21T00:00:00.000Z",
+                deletedAt: null,
+              }),
       }),
     ),
   );
@@ -129,6 +137,29 @@ it.layer(layerTest)("RuntimePolicyV2", (it) => {
       assert.equal(yield* modeFor(grokInstanceId, "auto"), "auto");
       assert.equal(yield* modeFor(grokInstanceId, "full-access"), "full-access");
       assert.equal(yield* modeFor(providerInstanceId, "auto-accept-edits"), "auto-accept-edits");
+    }),
+  );
+
+  it.effect("passes additional project roots and skips removed or duplicate ones", () =>
+    Effect.gen(function* () {
+      const policy = yield* RuntimePolicy.RuntimePolicyV2;
+      const now = yield* DateTime.now;
+      const resolved = yield* policy.resolve({
+        thread: makeThread({
+          now,
+          worktreePath: null,
+          additionalProjectIds: [otherProjectId, missingProjectId, projectId],
+        }),
+        modelSelection,
+      });
+      assert.equal(resolved.cwd, "/project-root");
+      assert.deepStrictEqual(resolved.additionalDirectories, [`/roots/${otherProjectId}`]);
+
+      const withoutExtras = yield* policy.resolve({
+        thread: makeThread({ now, worktreePath: null }),
+        modelSelection,
+      });
+      assert.equal(withoutExtras.additionalDirectories, undefined);
     }),
   );
 });

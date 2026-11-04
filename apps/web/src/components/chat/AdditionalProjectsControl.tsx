@@ -17,7 +17,7 @@ import { useComposerMenuProps } from "./composerEventScope";
 const EMPTY_PROJECT_IDS: ReadonlyArray<ProjectId> = [];
 
 /** Picks made before a draft's first send, which launches the thread with them. */
-export const useDraftAdditionalProjectsStore = create<{
+const useDraftAdditionalProjectsStore = create<{
   readonly byThread: Readonly<Record<string, ReadonlyArray<ProjectId>>>;
   readonly set: (key: string, projectIds: ReadonlyArray<ProjectId>) => void;
 }>((set) => ({
