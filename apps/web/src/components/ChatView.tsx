@@ -177,6 +177,7 @@ import { GuestPendingMessages } from "./chat/GuestShareControls";
 import { useDeviceState } from "~/state/device";
 import { BranchToolbar, type BranchToolbarHandle } from "./BranchToolbar";
 import { ComposerContextPermissions } from "./ComposerContextPermissions";
+import { AdditionalProjectsControl } from "./chat/AdditionalProjectsControl";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { isEditableFocused } from "../lib/editableFocus";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
@@ -3783,20 +3784,26 @@ export default function ChatView(props: ChatViewProps) {
                                     : undefined
                                 }
                                 availableEnvironments={logicalProjectEnvironments}
-                                {...(isServerThread
-                                  ? {}
-                                  : {
-                                      trailing: (
-                                        <ComposerContextPermissions
-                                          environmentId={environmentId}
-                                          runtimeMode={runtimeMode}
-                                          supportedRuntimeModes={
-                                            activeProviderStatus?.supportedRuntimeModes
-                                          }
-                                          onRuntimeModeChange={handleRuntimeModeChangeStable}
-                                        />
-                                      ),
-                                    })}
+                                trailing={
+                                  <div className="ms-auto flex min-w-0 items-center gap-1">
+                                    <AdditionalProjectsControl
+                                      environmentId={activeThread.environmentId}
+                                      threadId={activeThread.id}
+                                      projectId={activeThread.projectId}
+                                      isServerThread={isServerThread}
+                                    />
+                                    {isServerThread ? null : (
+                                      <ComposerContextPermissions
+                                        environmentId={environmentId}
+                                        runtimeMode={runtimeMode}
+                                        supportedRuntimeModes={
+                                          activeProviderStatus?.supportedRuntimeModes
+                                        }
+                                        onRuntimeModeChange={handleRuntimeModeChangeStable}
+                                      />
+                                    )}
+                                  </div>
+                                }
                               />
                             </div>
                           )}

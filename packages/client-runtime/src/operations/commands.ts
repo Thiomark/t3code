@@ -134,6 +134,7 @@ export interface UpdateThreadMetadataInput extends ThreadCommandInput {
   readonly worktreePath?: string | null;
   readonly regenerateTitle?: boolean;
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
+  readonly additionalProjectIds?: ReadonlyArray<ProjectId>;
   readonly expectedEmpty?: boolean;
 }
 
@@ -154,6 +155,7 @@ interface StartThreadBootstrap {
     readonly interactionMode: ProviderInteractionMode;
     readonly branch: string | null;
     readonly worktreePath: string | null;
+    readonly additionalProjectIds?: ReadonlyArray<ProjectId>;
     readonly createdAt: string;
   };
   readonly prepareWorktree?: {
@@ -616,6 +618,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
       input.worktreePath !== undefined ||
       input.regenerateTitle !== undefined ||
       input.linkedPullRequest !== undefined ||
+      input.additionalProjectIds !== undefined ||
       input.limitRecovery !== undefined
     ) {
       result = yield* dispatch({
@@ -631,6 +634,9 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
         ...(input.linkedPullRequest === undefined
           ? {}
           : { linkedPullRequest: input.linkedPullRequest }),
+        ...(input.additionalProjectIds === undefined
+          ? {}
+          : { additionalProjectIds: input.additionalProjectIds }),
       });
     }
     if (input.modelSelection !== undefined) {
@@ -721,6 +727,10 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
       runtimeMode: input.runtimeMode,
       interactionMode: input.interactionMode,
       workspaceStrategy,
+      ...(bootstrap?.additionalProjectIds === undefined ||
+      bootstrap.additionalProjectIds.length === 0
+        ? {}
+        : { additionalProjectIds: bootstrap.additionalProjectIds }),
       initialMessage: {
         messageId: input.message.messageId,
         text: input.message.text,
