@@ -1,9 +1,14 @@
-import type { EnvironmentId, ProjectId, PullRequestInvolvement, ThreadId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProjectId,
+  PullRequestInvolvement,
+  ThreadId,
+} from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { Schema } from "effect";
 import { ChevronDown, ChevronUp } from "lucide";
 import { ChevronDownIcon, ChevronRightIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useOpenPrLink } from "../../lib/openPullRequestLink";
@@ -51,22 +56,18 @@ export function ThreadOpenPullRequestsPanel(props: ThreadOpenPullRequestsPanelPr
   const openPrLink = useOpenPrLink(threadRef);
 
   // A collapsed section asks for nothing, so it costs no provider calls.
-  const targets = useMemo(
-    () =>
-      collapsed
-        ? []
-        : [
-            {
-              environmentId: props.environmentId,
-              input: {
-                state: "open" as const,
-                projectId: props.projectId,
-                limit: OPEN_PULL_REQUESTS_LIMIT,
-              },
-            },
-          ],
-    [collapsed, props.environmentId, props.projectId],
-  );
+  const targets = collapsed
+    ? []
+    : [
+        {
+          environmentId: props.environmentId,
+          input: {
+            state: "open" as const,
+            projectId: props.projectId,
+            limit: OPEN_PULL_REQUESTS_LIMIT,
+          },
+        },
+      ];
   const list = usePullRequestList(targets);
   const status = useEnvironmentQuery(
     collapsed
@@ -75,21 +76,17 @@ export function ThreadOpenPullRequestsPanel(props: ThreadOpenPullRequestsPanelPr
   );
   const currentBranch = status.data?.refName ?? null;
 
-  const entries = useMemo(() => {
-    if (!list.data) return [];
-    const filtered = filterPullRequestsByInvolvement(
-      list.data.entries,
-      list.data.viewers,
-      involvement,
-    );
-    // The current branch's PR leads, then the most recently updated.
-    return [...filtered].toSorted((left, right) => {
-      const leftCurrent = left.headBranch === currentBranch ? 1 : 0;
-      const rightCurrent = right.headBranch === currentBranch ? 1 : 0;
-      if (leftCurrent !== rightCurrent) return rightCurrent - leftCurrent;
-      return right.updatedAt.localeCompare(left.updatedAt);
-    });
-  }, [currentBranch, involvement, list.data]);
+  // The current branch's PR leads, then the most recently updated.
+  const entries = list.data
+    ? filterPullRequestsByInvolvement(list.data.entries, list.data.viewers, involvement).toSorted(
+        (left, right) => {
+          const leftCurrent = left.headBranch === currentBranch ? 1 : 0;
+          const rightCurrent = right.headBranch === currentBranch ? 1 : 0;
+          if (leftCurrent !== rightCurrent) return rightCurrent - leftCurrent;
+          return right.updatedAt.localeCompare(left.updatedAt);
+        },
+      )
+    : [];
 
   const totalCount = list.data?.entries.length;
   const hiddenCount = Math.max(0, entries.length - visibleCount);
@@ -151,7 +148,11 @@ export function ThreadOpenPullRequestsPanel(props: ThreadOpenPullRequestsPanelPr
           <span className="sr-only">Collapsed</span>
         ) : (
           <>
-            <div role="tablist" aria-label="Filter pull requests" className="flex gap-1 px-2 pb-1.5">
+            <div
+              role="tablist"
+              aria-label="Filter pull requests"
+              className="flex gap-1 px-2 pb-1.5"
+            >
               {FILTERS.map((filter) => (
                 <button
                   key={filter.id}
@@ -177,9 +178,7 @@ export function ThreadOpenPullRequestsPanel(props: ThreadOpenPullRequestsPanelPr
             {list.error && entries.length === 0 ? (
               <p className="px-2.5 py-1.5 text-2xs text-destructive">{list.error}</p>
             ) : list.data && entries.length === 0 ? (
-              <p className="px-2.5 py-1.5 text-2xs text-muted-foreground">
-                No open pull requests.
-              </p>
+              <p className="px-2.5 py-1.5 text-2xs text-muted-foreground">No open pull requests.</p>
             ) : !list.data ? (
               <p className="px-2.5 py-1.5 text-2xs text-muted-foreground">Loading…</p>
             ) : (
