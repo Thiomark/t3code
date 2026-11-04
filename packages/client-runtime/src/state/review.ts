@@ -56,6 +56,11 @@ export function createReviewEnvironmentAtoms<R, E>(
       tag: WS_METHODS.reviewGetBranchCommits,
       staleTimeMs: 5_000,
     }),
+    fileBlame: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:review:file-blame",
+      tag: WS_METHODS.reviewGetFileBlame,
+      staleTimeMs: 30_000,
+    }),
     diffPreview,
     diffFilePatch: createEnvironmentQueryAtomFamily(runtime, {
       label: "environment-data:review:diff-file-patch",

@@ -15,6 +15,8 @@ import {
   type ReviewDiffPreviewError,
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewResult,
+  type ReviewFileBlameInput,
+  type ReviewFileBlameResult,
 } from "@t3tools/contracts";
 
 import * as ServerConfig from "../config.ts";
@@ -26,6 +28,7 @@ const WORKSPACE_BOUND_SUBJECTS = {
   "ReviewService.getBranchCommits": "commit list",
   "ReviewService.getDiffPreview": "diff preview",
   "ReviewService.getDiffFileContents": "diff file contents",
+  "ReviewService.getFileBlame": "file blame",
 } as const;
 
 export class ReviewService extends Context.Service<
@@ -40,6 +43,9 @@ export class ReviewService extends Context.Service<
     readonly getDiffFileContents: (
       input: ReviewDiffFileContentsInput,
     ) => Effect.Effect<ReviewDiffFileContentsResult, ReviewDiffPreviewError>;
+    readonly getFileBlame: (
+      input: ReviewFileBlameInput,
+    ) => Effect.Effect<ReviewFileBlameResult, ReviewDiffPreviewError>;
   }
 >()("t3/review/ReviewService") {}
 
@@ -144,10 +150,23 @@ export const make = Effect.gen(function* () {
     return yield* git.getReviewDiffFileContents(input);
   });
 
+  const getFileBlame: ReviewService["Service"]["getFileBlame"] = Effect.fn(
+    "ReviewService.getFileBlame",
+  )(function* (input) {
+    yield* assertWorkspaceBoundCwd("ReviewService.getFileBlame", input.cwd);
+
+    const handle = yield* vcsRegistry.detect({ cwd: input.cwd, requestedKind: "auto" });
+    if (handle?.kind !== "git") {
+      return { tracked: false, commits: [], ranges: [], truncated: false };
+    }
+    return yield* git.getFileBlame(input);
+  });
+
   return ReviewService.of({
     getBranchCommits,
     getDiffPreview,
     getDiffFileContents,
+    getFileBlame,
   });
 });
 

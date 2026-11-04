@@ -91,3 +91,36 @@ export type ReviewDiffPreviewResult = typeof ReviewDiffPreviewResult.Type;
 
 export const ReviewDiffPreviewError = Schema.Union([VcsError, GitCommandError]);
 export type ReviewDiffPreviewError = typeof ReviewDiffPreviewError.Type;
+
+export const ReviewFileBlameInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  relativePath: TrimmedNonEmptyString,
+});
+export type ReviewFileBlameInput = typeof ReviewFileBlameInput.Type;
+
+export const ReviewFileBlameCommit = Schema.Struct({
+  /** All zeros for lines that are not committed yet. */
+  sha: Schema.String,
+  authorName: Schema.String,
+  authorEmail: Schema.String,
+  authoredAt: Schema.String,
+  summary: Schema.String,
+});
+export type ReviewFileBlameCommit = typeof ReviewFileBlameCommit.Type;
+
+export const ReviewFileBlameRange = Schema.Struct({
+  /** 1-based first line in the working-tree file. */
+  startLine: Schema.Number,
+  lineCount: Schema.Number,
+  sha: Schema.String,
+});
+export type ReviewFileBlameRange = typeof ReviewFileBlameRange.Type;
+
+export const ReviewFileBlameResult = Schema.Struct({
+  /** False when the path is untracked or outside a Git repository. */
+  tracked: Schema.Boolean,
+  commits: Schema.Array(ReviewFileBlameCommit),
+  ranges: Schema.Array(ReviewFileBlameRange),
+  truncated: Schema.Boolean,
+});
+export type ReviewFileBlameResult = typeof ReviewFileBlameResult.Type;
