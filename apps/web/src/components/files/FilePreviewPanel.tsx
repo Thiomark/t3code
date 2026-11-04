@@ -44,7 +44,7 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { mediaFileReference } from "@t3tools/client-runtime/media-reference";
-import { FolderTree, Globe2, WrapTextIcon } from "lucide-react";
+import { FolderTree, GitCommitHorizontalIcon, Globe2, WrapTextIcon } from "lucide-react";
 import { Code2, Eye, Table2 } from "lucide";
 import * as Schema from "effect/Schema";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -106,6 +106,7 @@ import {
   FileSurfaceFailure,
   FileSurfaceLoading,
 } from "./fileSurfaceChrome";
+import { FILE_BLAME_UNSAFE_CSS, useFileBlameHover } from "./FileBlameHover";
 import SourceFilePreview from "./ReadOnlySourcePreview";
 import { resolveCenteredFileLineScrollTop } from "./fileLineReveal";
 import { DiffCommentAnnotation } from "../diffs/DiffCommentAnnotation";
@@ -887,7 +888,7 @@ function EditableFileSurface({
               theme: resolveDiffThemeName(resolvedTheme),
               preferredHighlighter: PREFERRED_HIGHLIGHTER,
               themeType: resolvedTheme,
-              unsafeCSS: FILE_LINK_REVEAL_UNSAFE_CSS,
+              unsafeCSS: `${FILE_LINK_REVEAL_UNSAFE_CSS}${FILE_BLAME_UNSAFE_CSS}`,
               onPostRender: handlePostRender,
             }}
             selectedLines={selectedRange}
@@ -1129,6 +1130,23 @@ export default function FilePreviewPanel({
     !(tableDelimiter && renderTable) &&
     !renderBrowserFile &&
     !isDocument;
+  const [blamePreferred, setBlamePreferred] = useLocalStorage(
+    "t3code:file-preview:blame",
+    true,
+    Schema.Boolean,
+  );
+  const blame = useFileBlameHover({
+    environmentId,
+    cwd,
+    relativePath: previewPath,
+    enabled: blamePreferred && showsRawText && attachment === undefined && !isHostFile,
+  });
+  const blameRefresh = blame.refresh;
+  const savedContents = file.data?.contents;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- a saved or externally changed file shifts its lines, so its blame is re-read
+  useEffect(() => {
+    if (savedContents !== undefined) blameRefresh();
+  }, [blameRefresh, savedContents]);
   const rendered = isMermaid
     ? renderMermaid
     : isMarkdown
@@ -1302,6 +1320,15 @@ export default function FilePreviewPanel({
               />
             </FileSurfaceAction>
           ) : null}
+          {showsRawText && attachment === undefined && !isHostFile ? (
+            <FileSurfaceAction
+              label={blamePreferred ? "Hide line blame" : "Show line blame on hover"}
+              pressed={blamePreferred}
+              onPress={() => setBlamePreferred(!blamePreferred)}
+            >
+              <GitCommitHorizontalIcon className="size-3.5" />
+            </FileSurfaceAction>
+          ) : null}
           {showsRawText ? (
             <FileSurfaceAction
               label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
@@ -1345,7 +1372,9 @@ export default function FilePreviewPanel({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div
           className={cn("min-w-0 flex-1 flex-col overflow-hidden", previewPath ? "flex" : "hidden")}
+          {...blame.handlers}
         >
+          {blame.overlay}
           {isFolder ? null : relativePath && attachment ? (
             <AttachmentFilePreview
               key={`${environmentId}:${attachment.id}`}
