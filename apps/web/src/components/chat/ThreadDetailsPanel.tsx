@@ -23,6 +23,7 @@ import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadServersPanel } from "./ThreadServersPanel";
+import { ThreadOpenPullRequestsPanel } from "./ThreadOpenPullRequestsPanel";
 import {
   ThreadDetailsContext,
   ThreadDetailsUsage,
@@ -236,6 +237,16 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                     ) : null}
                   </div>
                 </ThreadDetailsSection>
+              ) : null}
+
+              {density === "full" && props.gitCwd && props.isGitRepo && visible.openPullRequests ? (
+                <ThreadOpenPullRequestsPanel
+                  environmentId={props.environmentId}
+                  threadId={props.threadId}
+                  projectId={props.projectId}
+                  gitCwd={props.gitCwd}
+                  onCheckoutPullRequestRequest={props.onCheckoutPullRequestRequest}
+                />
               ) : null}
 
               {density === "full" && !props.draftId && visible.servers ? (
