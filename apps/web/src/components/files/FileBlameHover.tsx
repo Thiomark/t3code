@@ -1,4 +1,8 @@
-import type { EnvironmentId, ReviewFileBlameCommit, ReviewFileBlameResult } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ReviewFileBlameCommit,
+  ReviewFileBlameResult,
+} from "@t3tools/contracts";
 import { GitCommitHorizontalIcon } from "lucide-react";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -6,7 +10,7 @@ import { RelativeTime } from "~/components/RelativeTime";
 import { useEnvironmentQuery } from "~/state/query";
 import { reviewEnvironment } from "~/state/review";
 
-export const FILE_BLAME_HINT_ATTRIBUTE = "data-file-blame-hint";
+const FILE_BLAME_HINT_ATTRIBUTE = "data-file-blame-hint";
 
 /** Ghost text after the hovered line, like GitLens' current-line blame. */
 export const FILE_BLAME_UNSAFE_CSS = `

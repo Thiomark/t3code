@@ -1,3 +1,4 @@
+import * as DateTime from "effect/DateTime";
 import type {
   ReviewFileBlameCommit,
   ReviewFileBlameRange,
@@ -18,7 +19,11 @@ export function parseGitBlamePorcelain(
   const commits = new Map<string, ReviewFileBlameCommit>();
   const ranges: ReviewFileBlameRange[] = [];
   const lines = stdout.split("\n");
-  let current: { sha: string; line: number; draft: Partial<ReviewFileBlameCommit> } | null = null;
+  let current: {
+    sha: string;
+    line: number;
+    draft: { -readonly [Key in keyof ReviewFileBlameCommit]?: ReviewFileBlameCommit[Key] };
+  } | null = null;
 
   for (const line of lines) {
     if (current === null) {
@@ -61,7 +66,7 @@ export function parseGitBlamePorcelain(
     else if (key === "author-time") {
       const seconds = Number(value);
       if (Number.isFinite(seconds)) {
-        current.draft.authoredAt = new Date(seconds * 1000).toISOString();
+        current.draft.authoredAt = DateTime.formatIso(DateTime.makeUnsafe(seconds * 1000));
       }
     } else if (key === "summary") current.draft.summary = value.slice(0, SUMMARY_LIMIT);
   }
