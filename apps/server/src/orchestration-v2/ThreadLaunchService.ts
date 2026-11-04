@@ -88,6 +88,7 @@ export interface ThreadLaunchInput {
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
   readonly workspaceStrategy: ThreadLaunchWorkspaceStrategy;
+  readonly additionalProjectIds?: ReadonlyArray<ProjectId>;
   readonly initialMessage?: ThreadLaunchInitialMessage;
   readonly importedNativeThread?: {
     readonly ref: {
@@ -929,6 +930,9 @@ const make = Effect.gen(function* () {
                 commandId: input.commandId,
                 threadId: candidateThreadId,
                 expectedEmpty: true,
+                ...(input.additionalProjectIds === undefined
+                  ? {}
+                  : { additionalProjectIds: input.additionalProjectIds }),
               })
             : threads.dispatch({
                 type: "thread.create",
@@ -941,6 +945,9 @@ const make = Effect.gen(function* () {
                 interactionMode: input.interactionMode,
                 branch: initialBranch,
                 worktreePath: initialWorktreePath,
+                ...(input.additionalProjectIds === undefined
+                  ? {}
+                  : { additionalProjectIds: input.additionalProjectIds }),
                 ...(input.importedNativeThread === undefined
                   ? {}
                   : { importedNativeThread: input.importedNativeThread }),

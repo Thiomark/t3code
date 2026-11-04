@@ -184,10 +184,22 @@ export const layerFromProjectStore: Layer.Layer<
               }),
             ),
           ));
+        // A removed project drops out instead of failing the turn.
+        const additionalDirectories: string[] = [];
+        for (const projectId of input.thread.additionalProjectIds ?? []) {
+          if (projectId === input.thread.projectId) continue;
+          const project = yield* projects
+            .get(projectId)
+            .pipe(Effect.orElseSucceed(() => Option.none()));
+          if (Option.isSome(project) && project.value.workspaceRoot !== cwd) {
+            additionalDirectories.push(project.value.workspaceRoot);
+          }
+        }
         return ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
           runtimeMode: providerRuntimeMode(input.thread.runtimeMode, supportedRuntimeModes),
           interactionMode: input.thread.interactionMode,
           cwd,
+          ...(additionalDirectories.length === 0 ? {} : { additionalDirectories }),
           ...(maxRuntimeMode === undefined ? {} : { maxRuntimeMode }),
         });
       }),

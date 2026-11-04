@@ -66,6 +66,7 @@ import {
   isRuntimeModeAbove,
   resolveProviderInstanceEnabled,
   resolveProjectProviderInstanceEnabled,
+  type ProjectId,
   type ProviderSessionId,
   RunId,
   RuntimeMode,
@@ -290,6 +291,14 @@ export class OrchestratorThreadAboveModeLimitError extends Schema.TaggedError<Or
 }
 
 const isOrchestratorDispatchError = Schema.is(OrchestratorDispatchError);
+
+/** Drops duplicates and the primary project, which the thread already works in. */
+function normalizeAdditionalProjectIds(
+  primaryProjectId: ProjectId,
+  additionalProjectIds: ReadonlyArray<ProjectId>,
+): ReadonlyArray<ProjectId> {
+  return [...new Set(additionalProjectIds)].filter((projectId) => projectId !== primaryProjectId);
+}
 
 /** The ceiling refusal under however many dispatch errors wrapped it on the way out. */
 function runtimePolicyCeilingCause(error: unknown) {
@@ -2768,6 +2777,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       interactionMode: command.interactionMode,
       branch: command.branch,
       worktreePath: command.worktreePath,
+      ...(command.additionalProjectIds === undefined
+        ? {}
+        : {
+            additionalProjectIds: normalizeAdditionalProjectIds(
+              command.projectId,
+              command.additionalProjectIds,
+            ),
+          }),
       activeProviderThreadId: null,
       pullRequests: [],
       ...(command.linkOrigin === undefined ? {} : { linkOrigin: command.linkOrigin }),
@@ -3652,6 +3669,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                 : {}),
             ...(command.branch === undefined ? {} : { branch: command.branch }),
             ...(command.worktreePath === undefined ? {} : { worktreePath: command.worktreePath }),
+            ...(command.additionalProjectIds === undefined
+              ? {}
+              : {
+                  additionalProjectIds: normalizeAdditionalProjectIds(
+                    thread.projectId,
+                    command.additionalProjectIds,
+                  ),
+                }),
             ...(command.linkedPullRequest === undefined
               ? {}
               : {

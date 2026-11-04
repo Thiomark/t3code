@@ -144,6 +144,7 @@ import type { useQueuedRunEdit } from "./useQueuedRunEdit";
 import type { useTimelineFollow } from "./useTimelineFollow";
 import type { useUsageLimitsPanel } from "./useUsageLimitsPanel";
 import type { useWorktreeSetup } from "./useWorktreeSetup";
+import { readDraftAdditionalProjectIds } from "./AdditionalProjectsControl";
 
 const ENVIRONMENT_UNAVAILABLE_SEND_TOAST_TRAIL_SIZE = 3;
 
@@ -1323,6 +1324,10 @@ export function useComposerSend(input: ComposerSendInput) {
                       interactionMode: sendInteractionMode,
                       branch: activeThreadBranch,
                       worktreePath: activeThread.worktreePath,
+                      additionalProjectIds: readDraftAdditionalProjectIds(
+                        environmentId,
+                        threadIdForSend,
+                      ),
                       createdAt: activeThread.createdAt,
                     },
                   }
