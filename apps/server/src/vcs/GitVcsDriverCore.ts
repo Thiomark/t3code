@@ -27,6 +27,8 @@ import {
   type GitCommandFailureReason,
   T3_PROJECT_FILE_NAME,
   type ReviewBranchCommitsInput,
+  type ReviewFileBlameInput,
+  type ReviewFileBlameResult,
   type ReviewDiffFileContentsInput,
   type ReviewDiffPreviewInput,
   type ReviewDiffFileStat,
@@ -42,6 +44,7 @@ import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
 import { resolveProjectFileBackedSetting } from "@t3tools/shared/projectSettings";
 import { gitCommandDuration, gitCommandsTotal, withMetrics } from "../observability/Metrics.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
+import { isSafeBlamePath, parseGitBlamePorcelain } from "./gitBlame.ts";
 import { removeEmptyDirectory } from "./removeEmptyDirectory.ts";
 import { explicitBareRepositoryEnv, gitConfigEnv } from "./VcsProcess.ts";
 import { removeLinkedWorktree } from "./worktreeRemoval.ts";
@@ -66,6 +69,8 @@ const legacyBranchBaseConfigKey = (branch: string) => `branch.${branch}.gh-merge
 const gitProcesses = Semaphore.makeUnsafe(8);
 const WORKTREE_REMOVE_TIMEOUT_MS = Duration.toMillis(Duration.minutes(5));
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
+const FILE_BLAME_TIMEOUT_MS = 15_000;
+const FILE_BLAME_MAX_OUTPUT_BYTES = 16_000_000;
 const OUTPUT_TRUNCATED_MARKER = "\n\n[truncated]";
 const PREPARED_COMMIT_PATCH_MAX_OUTPUT_BYTES = 49_000;
 const RANGE_COMMIT_SUMMARY_MAX_OUTPUT_BYTES = 19_000;
@@ -3314,6 +3319,43 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     };
   });
 
+  const getFileBlame = Effect.fn("getFileBlame")(function* (input: ReviewFileBlameInput) {
+    const untracked: ReviewFileBlameResult = {
+      tracked: false,
+      commits: [],
+      ranges: [],
+      truncated: false,
+    };
+    if (!isSafeBlamePath(input.relativePath)) {
+      return yield* new GitCommandError({
+        operation: "GitVcsDriver.getFileBlame",
+        command: "git blame",
+        cwd: input.cwd,
+        detail: "Blame paths must stay inside the repository.",
+      });
+    }
+    const repository = yield* resolveRepositoryPathsUncached(input.cwd);
+    if (!repository?.worktreeRoot) return untracked;
+    // Blames the working tree, so edited lines read as not committed yet.
+    const result = yield* executeGit(
+      "GitVcsDriver.getFileBlame",
+      input.cwd,
+      ["blame", "--porcelain", "--no-progress", "--", input.relativePath],
+      {
+        allowNonZeroExit: true,
+        timeoutMs: FILE_BLAME_TIMEOUT_MS,
+        maxOutputBytes: FILE_BLAME_MAX_OUTPUT_BYTES,
+      },
+    );
+    // Untracked files, files outside the repository, and repositories without commits.
+    if (result.exitCode !== 0) return untracked;
+    return {
+      tracked: true,
+      ...parseGitBlamePorcelain(result.stdout),
+      truncated: result.stdoutTruncated,
+    };
+  });
+
   const getReviewBranchCommits = Effect.fn("getReviewBranchCommits")(function* (
     input: ReviewBranchCommitsInput,
   ) {
@@ -5046,6 +5088,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     }),
     readRangeContext,
     getReviewBranchCommits,
+    getFileBlame,
     getReviewDiffPreview,
     getReviewDiffFileContents,
     readConfigValue,
